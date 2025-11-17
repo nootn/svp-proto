@@ -1,0 +1,174 @@
+@page "/fyi"
+@attribute [Authorize]
+@inject IFyiApiClient FyiApi
+@inject NavigationManager Navigation
+
+<PageTitle>FYI Clients - ClientHub FYI</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+            <FluentLabel Typo="Typography.H4">
+                <FluentIcon Value="@(new Icons.Regular.Size24.People())" Color="Color.Accent" />
+                FYI Client Search
+            </FluentLabel>
+
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                <FluentTextField @bind-Value="searchQuery"
+                                Placeholder="Search by client name or code..."
+                                Style="flex: 1;"
+                                @onkeydown="HandleKeyDown">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Search())" Slot="start" />
+                </FluentTextField>
+
+                <FluentButton Appearance="Appearance.Accent"
+                             OnClick="SearchClientsAsync"
+                             Loading="@isSearching">
+                    Search
+                </FluentButton>
+
+                @if (clients != null && clients.Any())
+                {
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                 OnClick="ClearSearch">
+                        Clear
+                    </FluentButton>
+                }
+            </FluentStack>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <FluentMessageBar Intent="MessageIntent.Warning">
+                    @errorMessage
+                </FluentMessageBar>
+            }
+        </FluentStack>
+    </FluentCard>
+
+    @if (isSearching)
+    {
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 2rem;">
+                <FluentProgressRing />
+                <FluentLabel>Searching FYI clients...</FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    }
+    else if (hasSearched && clients != null)
+    {
+        @if (!clients.Any())
+        {
+            <FluentCard>
+                <FluentLabel Typo="Typography.Body">
+                    No clients found matching your search criteria.
+                </FluentLabel>
+            </FluentCard>
+        }
+        else
+        {
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                    <FluentLabel Typo="Typography.H6">
+                        Found @clients.Count client(s)
+                    </FluentLabel>
+
+                    <FluentDataGrid Items="@clients.AsQueryable()"
+                                   GridTemplateColumns="2fr 1fr 2fr 1.5fr 1fr 100px"
+                                   Style="width: 100%;">
+
+                        <PropertyColumn Property="@(c => c.Name)" Title="Client Name" Sortable="true" />
+                        <PropertyColumn Property="@(c => c.Code)" Title="Code" Sortable="true" />
+                        <PropertyColumn Property="@(c => c.Email)" Title="Email" Sortable="true" />
+                        <PropertyColumn Property="@(c => c.Phone)" Title="Phone" />
+
+                        <TemplateColumn Title="Type">
+                            <FluentBadge Appearance="Appearance.Accent" Fill="lightweight">
+                                @context.Type
+                            </FluentBadge>
+                        </TemplateColumn>
+
+                        <TemplateColumn Title="Actions">
+                            <FluentButton Appearance="Appearance.Lightweight"
+                                        OnClick="@(() => ViewClientDetail(context.Id))">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Eye())" />
+                                View
+                            </FluentButton>
+                        </TemplateColumn>
+
+                    </FluentDataGrid>
+                </FluentStack>
+            </FluentCard>
+        }
+    }
+    else
+    {
+        <FluentCard Style="min-height: 200px;">
+            <FluentStack Orientation="Orientation.Vertical"
+                        VerticalAlignment="VerticalAlignment.Center"
+                        HorizontalAlignment="HorizontalAlignment.Center"
+                        Style="height: 100%;">
+                <FluentIcon Value="@(new Icons.Regular.Size48.Search())" Color="Color.Neutral" />
+                <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">
+                    Enter a client name or code to search
+                </FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    }
+</FluentStack>
+
+@code {
+    private string searchQuery = string.Empty;
+    private List<FyiClient>? clients;
+    private bool isSearching;
+    private bool hasSearched;
+    private string? errorMessage;
+
+    private async Task SearchClientsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery))
+        {
+            errorMessage = "Please enter a search query";
+            return;
+        }
+
+        isSearching = true;
+        hasSearched = false;
+        errorMessage = null;
+
+        try
+        {
+            var results = await FyiApi.SearchClientsAsync(searchQuery);
+            clients = results.ToList();
+            hasSearched = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error searching clients: {ex.Message}";
+        }
+        finally
+        {
+            isSearching = false;
+        }
+    }
+
+    private void ClearSearch()
+    {
+        searchQuery = string.Empty;
+        clients = null;
+        hasSearched = false;
+        errorMessage = null;
+    }
+
+    private void ViewClientDetail(string clientId)
+    {
+        Navigation.NavigateTo($"/fyi/client/{clientId}");
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchClientsAsync();
+        }
+    }
+}

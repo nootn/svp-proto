@@ -1,0 +1,355 @@
+@page "/fyi/client/{ClientId}"
+@attribute [Authorize]
+@inject IFyiApiClient FyiApi
+@inject NavigationManager Navigation
+
+<PageTitle>@(client?.Name ?? "Client Detail") - ClientHub FYI</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    <!-- Header with back button -->
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+            <FluentButton Appearance="Appearance.Lightweight"
+                         OnClick="@(() => Navigation.NavigateTo("/fyi"))">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowLeft())" Slot="start" />
+                Back to Search
+            </FluentButton>
+
+            <FluentButton Appearance="Appearance.Accent"
+                         OnClick="LoadClientDetailAsync"
+                         Loading="@isLoading">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowClockwise())" Slot="start" />
+                Refresh
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (isLoading)
+    {
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 3rem;">
+                <FluentProgressRing />
+                <FluentLabel>Loading client details...</FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <FluentMessageBar Intent="MessageIntent.Error">
+            <strong>Error:</strong> @errorMessage
+        </FluentMessageBar>
+    }
+    else if (client != null)
+    {
+        <!-- Client Information -->
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                <FluentLabel Typo="Typography.H4">
+                    <FluentIcon Value="@(new Icons.Regular.Size28.Person())" Color="Color.Accent" />
+                    @client.Name
+                </FluentLabel>
+
+                <FluentDivider />
+
+                <div class="grid grid-2">
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                        <FluentLabel Typo="Typography.Caption">Client Code</FluentLabel>
+                        <FluentLabel Typo="Typography.Body"><strong>@client.Code</strong></FluentLabel>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                        <FluentLabel Typo="Typography.Caption">Type</FluentLabel>
+                        <FluentBadge Appearance="Appearance.Accent">@client.Type</FluentBadge>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                        <FluentLabel Typo="Typography.Caption">Email</FluentLabel>
+                        <FluentLabel Typo="Typography.Body">@client.Email</FluentLabel>
+                    </FluentStack>
+
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                        <FluentLabel Typo="Typography.Caption">Phone</FluentLabel>
+                        <FluentLabel Typo="Typography.Body">@client.Phone</FluentLabel>
+                    </FluentStack>
+                </div>
+            </FluentStack>
+        </FluentCard>
+
+        <!-- Contacts -->
+        @if (client.Contacts?.Any() == true)
+        {
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                    <FluentLabel Typo="Typography.H5">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.PeopleTeam())" Color="Color.Accent" />
+                        Contacts (@client.Contacts.Count)
+                    </FluentLabel>
+
+                    <div class="grid grid-2">
+                        @foreach (var contact in client.Contacts)
+                        {
+                            <FluentCard Style="padding: 1rem;">
+                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="8">
+                                    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                                        <FluentLabel Typo="Typography.Subtitle">
+                                            @contact.FirstName @contact.LastName
+                                        </FluentLabel>
+                                        @if (contact.IsPrimary)
+                                        {
+                                            <FluentBadge Appearance="Appearance.Accent" Fill="lightweight">Primary</FluentBadge>
+                                        }
+                                    </FluentStack>
+                                    <FluentLabel Typo="Typography.Caption">@contact.Position</FluentLabel>
+                                    <FluentLabel Typo="Typography.Caption">@contact.Email</FluentLabel>
+                                    <FluentLabel Typo="Typography.Caption">@contact.Phone</FluentLabel>
+                                </FluentStack>
+                            </FluentCard>
+                        }
+                    </div>
+                </FluentStack>
+            </FluentCard>
+        }
+
+        <!-- Jobs with master-detail layout -->
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                <FluentLabel Typo="Typography.H5">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Briefcase())" Color="Color.Accent" />
+                    Jobs (@(client.Jobs?.Count ?? 0))
+                </FluentLabel>
+
+                @if (client.Jobs?.Any() == true)
+                {
+                    <FluentStack Orientation="Orientation.Horizontal" Style="min-height: 400px;" HorizontalGap="15">
+                        <!-- Left: Job List -->
+                        <div style="flex: 1; border-right: 1px solid var(--neutral-stroke-divider-rest); padding-right: 15px;">
+                            <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+                                @foreach (var job in client.Jobs)
+                                {
+                                    <FluentCard Style="cursor: pointer; padding: 1rem; @(selectedJob?.Id == job.Id ? "border: 2px solid var(--accent-fill-rest);" : "")"
+                                              OnClick="@(() => SelectJob(job))">
+                                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                                            <FluentLabel Typo="Typography.Subtitle">@job.Name</FluentLabel>
+                                            <FluentLabel Typo="Typography.Caption">Code: @job.Code</FluentLabel>
+                                            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                                                <FluentBadge Appearance="@GetJobStatusAppearance(job.Status)">@job.Status</FluentBadge>
+                                                @if (job.DueDate != null)
+                                                {
+                                                    var isOverdue = job.DueDate < DateTime.Now;
+                                                    <FluentLabel Typo="Typography.Caption" Style="@(isOverdue ? "color: var(--error);" : "")">
+                                                        Due: @job.DueDate.Value.ToString("MMM dd, yyyy")
+                                                    </FluentLabel>
+                                                }
+                                            </FluentStack>
+                                        </FluentStack>
+                                    </FluentCard>
+                                }
+                            </FluentStack>
+                        </div>
+
+                        <!-- Right: Job Details -->
+                        <div style="flex: 2;">
+                            @if (selectedJob != null)
+                            {
+                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+                                    <!-- Job Info -->
+                                    <FluentCard>
+                                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+                                            <FluentLabel Typo="Typography.H6">@selectedJob.Name</FluentLabel>
+                                            <FluentDivider />
+                                            <div class="grid grid-2">
+                                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="3">
+                                                    <FluentLabel Typo="Typography.Caption">Manager</FluentLabel>
+                                                    <FluentLabel>@selectedJob.Manager</FluentLabel>
+                                                </FluentStack>
+                                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="3">
+                                                    <FluentLabel Typo="Typography.Caption">Status</FluentLabel>
+                                                    <FluentBadge Appearance="@GetJobStatusAppearance(selectedJob.Status)">@selectedJob.Status</FluentBadge>
+                                                </FluentStack>
+                                            </div>
+                                        </FluentStack>
+                                    </FluentCard>
+
+                                    <!-- Documents -->
+                                    <FluentAccordion>
+                                        <FluentAccordionItem Heading="@($"Documents ({selectedJob.Documents?.Count ?? 0})")" Expanded="true">
+                                            @if (selectedJob.Documents?.Any() == true)
+                                            {
+                                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                                                    @foreach (var doc in selectedJob.Documents)
+                                                    {
+                                                        <FluentCard Style="padding: 0.75rem;">
+                                                            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+                                                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="3">
+                                                                    <FluentLabel Typo="Typography.Body">
+                                                                        <FluentIcon Value="@(new Icons.Regular.Size16.Document())" Color="Color.Accent" />
+                                                                        @doc.Name
+                                                                    </FluentLabel>
+                                                                    <FluentLabel Typo="Typography.Caption">
+                                                                        @FormatFileSize(doc.Size) • Modified: @doc.ModifiedDate.ToString("MMM dd, yyyy")
+                                                                    </FluentLabel>
+                                                                </FluentStack>
+                                                                <FluentBadge Appearance="Appearance.Neutral">@doc.Status</FluentBadge>
+                                                            </FluentStack>
+                                                        </FluentCard>
+                                                    }
+                                                </FluentStack>
+                                            }
+                                            else
+                                            {
+                                                <FluentLabel Typo="Typography.Caption">No documents</FluentLabel>
+                                            }
+                                        </FluentAccordionItem>
+                                    </FluentAccordion>
+
+                                    <!-- Tasks -->
+                                    <FluentAccordion>
+                                        <FluentAccordionItem Heading="@($"Tasks ({selectedJob.Tasks?.Count ?? 0})")" Expanded="true">
+                                            @if (selectedJob.Tasks?.Any() == true)
+                                            {
+                                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                                                    @foreach (var task in selectedJob.Tasks)
+                                                    {
+                                                        <FluentCard Style="padding: 0.75rem;">
+                                                            <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                                                                <FluentLabel Typo="Typography.Body"><strong>@task.Title</strong></FluentLabel>
+                                                                <FluentLabel Typo="Typography.Caption">@task.Description</FluentLabel>
+                                                                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                                                                    <FluentBadge Appearance="@GetTaskStatusAppearance(task.Status)">@task.Status</FluentBadge>
+                                                                    <FluentBadge Appearance="@GetTaskPriorityAppearance(task.Priority)">@task.Priority</FluentBadge>
+                                                                    @if (task.DueDate != null)
+                                                                    {
+                                                                        <FluentLabel Typo="Typography.Caption">
+                                                                            Due: @task.DueDate.Value.ToString("MMM dd, yyyy")
+                                                                        </FluentLabel>
+                                                                    }
+                                                                </FluentStack>
+                                                            </FluentStack>
+                                                        </FluentCard>
+                                                    }
+                                                </FluentStack>
+                                            }
+                                            else
+                                            {
+                                                <FluentLabel Typo="Typography.Caption">No tasks</FluentLabel>
+                                            }
+                                        </FluentAccordionItem>
+                                    </FluentAccordion>
+                                </FluentStack>
+                            }
+                            else
+                            {
+                                <FluentStack Orientation="Orientation.Vertical"
+                                           VerticalAlignment="VerticalAlignment.Center"
+                                           HorizontalAlignment="HorizontalAlignment.Center"
+                                           Style="height: 100%;">
+                                    <FluentIcon Value="@(new Icons.Regular.Size48.Briefcase())" Color="Color.Neutral" />
+                                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">
+                                        Select a job to view details
+                                    </FluentLabel>
+                                </FluentStack>
+                            }
+                        </div>
+                    </FluentStack>
+                }
+                else
+                {
+                    <FluentLabel Typo="Typography.Body">No jobs found for this client.</FluentLabel>
+                }
+            </FluentStack>
+        </FluentCard>
+    }
+</FluentStack>
+
+@code {
+    [Parameter]
+    public string ClientId { get; set; } = string.Empty;
+
+    private FyiClientDetail? client;
+    private FyiJob? selectedJob;
+    private bool isLoading;
+    private string? errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadClientDetailAsync();
+    }
+
+    private async Task LoadClientDetailAsync()
+    {
+        if (string.IsNullOrEmpty(ClientId)) return;
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            client = await FyiApi.GetClientDetailAsync(ClientId);
+
+            // Auto-select first job if available
+            if (client.Jobs?.Any() == true)
+            {
+                selectedJob = client.Jobs.First();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load client details: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void SelectJob(FyiJob job)
+    {
+        selectedJob = job;
+    }
+
+    private Appearance GetJobStatusAppearance(string? status)
+    {
+        return status?.ToLowerInvariant() switch
+        {
+            "completed" => Appearance.Success,
+            "in progress" => Appearance.Accent,
+            "pending" => Appearance.Neutral,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private Appearance GetTaskStatusAppearance(string? status)
+    {
+        return status?.ToLowerInvariant() switch
+        {
+            "completed" => Appearance.Success,
+            "in progress" => Appearance.Accent,
+            "pending" => Appearance.Neutral,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private Appearance GetTaskPriorityAppearance(string? priority)
+    {
+        return priority?.ToLowerInvariant() switch
+        {
+            "high" => Appearance.Error,
+            "medium" => Appearance.Accent,
+            "low" => Appearance.Neutral,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}
