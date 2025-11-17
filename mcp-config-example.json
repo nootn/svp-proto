@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "clienthub-fyi": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "ClientHubFyi.Web/ClientHubFyi.Web.csproj"
+      ],
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
