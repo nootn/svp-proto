@@ -1,0 +1,69 @@
+@page "/"
+@attribute [Authorize]
+
+<PageTitle>Home - ClientHub FYI</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+            <FluentLabel Typo="Typography.H3">Welcome to ClientHub FYI</FluentLabel>
+            <FluentLabel Typo="Typography.Body">
+                A proof of concept integration with FYI Docs, Microsoft Graph, and MCP.
+            </FluentLabel>
+        </FluentStack>
+    </FluentCard>
+
+    <AuthorizeView>
+        <Authorized>
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+                    <FluentLabel Typo="Typography.H5">Logged in as: @context.User.Identity?.Name</FluentLabel>
+                    <FluentDivider />
+                    <FluentLabel Typo="Typography.Body">
+                        You have access to the following features:
+                    </FluentLabel>
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                        <FluentLabel>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.People())" Color="Color.Accent" />
+                            <strong>FYI Clients:</strong> Search and explore FYI client data
+                        </FluentLabel>
+                        <FluentLabel>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.Calendar())" Color="Color.Accent" />
+                            <strong>Calendar:</strong> View your Microsoft 365 calendar events
+                        </FluentLabel>
+                        <FluentLabel>
+                            <FluentIcon Value="@(new Icons.Regular.Size20.TaskListSquare())" Color="Color.Accent" />
+                            <strong>Tasks:</strong> View your Microsoft To Do tasks
+                        </FluentLabel>
+                    </FluentStack>
+                </FluentStack>
+            </FluentCard>
+
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+                    <FluentLabel Typo="Typography.H5">Quick Links</FluentLabel>
+                    <FluentDivider />
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" Wrap="true">
+                        <FluentButton Appearance="Appearance.Accent"
+                                      OnClick="@(() => Navigation.NavigateTo("/fyi"))">
+                            Search FYI Clients
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Accent"
+                                      OnClick="@(() => Navigation.NavigateTo("/calendar"))">
+                            View Calendar
+                        </FluentButton>
+                        <FluentButton Appearance="Appearance.Accent"
+                                      OnClick="@(() => Navigation.NavigateTo("/tasks"))">
+                            View Tasks
+                        </FluentButton>
+                    </FluentStack>
+                </FluentStack>
+            </FluentCard>
+        </Authorized>
+    </AuthorizeView>
+</FluentStack>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+}

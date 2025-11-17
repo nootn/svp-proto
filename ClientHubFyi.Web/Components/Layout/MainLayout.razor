@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentHeader>
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 1rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <FluentIcon Value="@(new Icons.Regular.Size24.AppFolder())" Color="Color.Accent" />
+                <FluentLabel Typo="Typography.H4">ClientHub FYI</FluentLabel>
+            </div>
+            <FluentSpacer />
+            <AuthorizeView>
+                <Authorized>
+                    <FluentPersona Name="@context.User.Identity?.Name"
+                                   Status="PresenceStatus.Available"
+                                   StatusSize="PresenceBadgeSize.Small"
+                                   ImageSize="32px">
+                    </FluentPersona>
+                    <FluentButton Appearance="Appearance.Lightweight"
+                                  OnClick="@(() => Navigation.NavigateTo("MicrosoftIdentity/Account/SignOut", true))">
+                        Sign out
+                    </FluentButton>
+                </Authorized>
+                <NotAuthorized>
+                    <FluentButton Appearance="Appearance.Accent"
+                                  OnClick="@(() => Navigation.NavigateTo("MicrosoftIdentity/Account/SignIn", true))">
+                        Sign in
+                    </FluentButton>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </FluentHeader>
+
+    <FluentStack Orientation="Orientation.Horizontal" Style="height: calc(100vh - 60px);">
+        <NavMenu />
+
+        <FluentBodyContent Style="flex: 1; overflow-y: auto; padding: 1rem;">
+            <FluentMessageBarProvider />
+            @Body
+        </FluentBodyContent>
+    </FluentStack>
+</FluentLayout>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+}

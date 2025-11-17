@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-ClientHubFyi-E8B9A1C2-D3E4-4F5A-8B6C-7D8E9F0A1B2C</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Blazor and ASP.NET Core -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.0" />
+
+    <!-- Fluent UI Blazor Components -->
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.10.2" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.10.2" />
+
+    <!-- Microsoft Identity & Entra ID -->
+    <PackageReference Include="Microsoft.Identity.Web" Version="3.5.0" />
+    <PackageReference Include="Microsoft.Identity.Web.UI" Version="3.5.0" />
+    <PackageReference Include="Microsoft.Identity.Web.GraphServiceClient" Version="3.5.0" />
+
+    <!-- Microsoft Graph -->
+    <PackageReference Include="Microsoft.Graph" Version="5.68.0" />
+
+    <!-- HTTP Client -->
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="10.0.0" />
+
+    <!-- MCP SDK -->
+    <PackageReference Include="ModelContextProtocol.NET" Version="0.3.0" />
+  </ItemGroup>
+
+</Project>

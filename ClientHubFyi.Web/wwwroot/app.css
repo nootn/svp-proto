@@ -1,0 +1,64 @@
+html, body {
+    font-family: var(--body-font);
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+#app {
+    height: 100%;
+}
+
+.page {
+    padding: 1rem;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.error-message {
+    color: var(--error);
+    padding: 1rem;
+    border-radius: 4px;
+    background-color: var(--neutral-layer-2);
+    margin: 1rem 0;
+}
+
+.success-message {
+    color: var(--success);
+    padding: 1rem;
+    border-radius: 4px;
+    background-color: var(--neutral-layer-2);
+    margin: 1rem 0;
+}
+
+.card {
+    padding: 1.5rem;
+    border-radius: 8px;
+    background-color: var(--neutral-layer-1);
+    box-shadow: var(--elevation-shadow-card-rest);
+    margin-bottom: 1rem;
+}
+
+.grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+    .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
