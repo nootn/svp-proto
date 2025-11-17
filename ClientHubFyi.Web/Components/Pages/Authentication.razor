@@ -1,0 +1,71 @@
+@page "/authentication/{action}"
+@inject NavigationManager Navigation
+
+<PageTitle>@GetTitle()</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical"
+             VerticalAlignment="VerticalAlignment.Center"
+             HorizontalAlignment="HorizontalAlignment.Center"
+             Style="min-height: 80vh;">
+
+    <FluentCard Style="min-width: 400px; padding: 2rem;">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+            <FluentIcon Value="@(new Icons.Regular.Size48.LockClosed())"
+                        Color="Color.Accent"
+                        Style="align-self: center;" />
+
+            <FluentLabel Typo="Typography.H4" Style="text-align: center;">
+                @GetMessage()
+            </FluentLabel>
+
+            <FluentProgressRing Style="align-self: center;" />
+
+            <FluentLabel Typo="Typography.Body" Style="text-align: center; color: var(--neutral-foreground-hint);">
+                Please wait while we redirect you...
+            </FluentLabel>
+        </FluentStack>
+    </FluentCard>
+</FluentStack>
+
+@code {
+    [Parameter]
+    public string? Action { get; set; }
+
+    protected override void OnInitialized()
+    {
+        var returnUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        switch (Action?.ToLowerInvariant())
+        {
+            case "login":
+                Navigation.NavigateTo($"MicrosoftIdentity/Account/SignIn?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+                break;
+            case "logout":
+                Navigation.NavigateTo("MicrosoftIdentity/Account/SignOut", forceLoad: true);
+                break;
+            default:
+                Navigation.NavigateTo("/");
+                break;
+        }
+    }
+
+    private string GetTitle()
+    {
+        return Action?.ToLowerInvariant() switch
+        {
+            "login" => "Signing in...",
+            "logout" => "Signing out...",
+            _ => "Authentication"
+        };
+    }
+
+    private string GetMessage()
+    {
+        return Action?.ToLowerInvariant() switch
+        {
+            "login" => "Signing you in with Microsoft Entra ID",
+            "logout" => "Signing you out",
+            _ => "Processing authentication..."
+        };
+    }
+}

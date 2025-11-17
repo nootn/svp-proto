@@ -1,0 +1,65 @@
+@page "/profile"
+@attribute [Authorize]
+
+<PageTitle>Profile - ClientHub FYI</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+            <FluentLabel Typo="Typography.H4">User Profile</FluentLabel>
+            <FluentDivider />
+
+            <AuthorizeView>
+                <Authorized>
+                    @if (userClaims != null && userClaims.Any())
+                    {
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+                            <FluentLabel Typo="Typography.H6">User Claims</FluentLabel>
+
+                            <FluentDataGrid Items="@userClaims" GridTemplateColumns="250px 1fr">
+                                <PropertyColumn Property="@(c => c.Type)" Title="Claim Type" />
+                                <PropertyColumn Property="@(c => c.Value)" Title="Value" />
+                            </FluentDataGrid>
+                        </FluentStack>
+                    }
+                    else
+                    {
+                        <FluentLabel>Loading user information...</FluentLabel>
+                    }
+                </Authorized>
+                <NotAuthorized>
+                    <FluentLabel>You need to sign in to view this page.</FluentLabel>
+                </NotAuthorized>
+            </AuthorizeView>
+        </FluentStack>
+    </FluentCard>
+</FluentStack>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    private IQueryable<ClaimInfo>? userClaims;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationStateTask != null)
+        {
+            var authState = await AuthenticationStateTask;
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                userClaims = user.Claims
+                    .Select(c => new ClaimInfo { Type = c.Type, Value = c.Value })
+                    .AsQueryable();
+            }
+        }
+    }
+
+    private class ClaimInfo
+    {
+        public string Type { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+}
