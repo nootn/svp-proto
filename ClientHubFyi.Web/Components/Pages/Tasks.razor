@@ -1,0 +1,218 @@
+@page "/tasks"
+@attribute [Authorize]
+@inject IGraphService GraphService
+
+<PageTitle>Tasks - ClientHub FYI</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+            <FluentLabel Typo="Typography.H4">
+                <FluentIcon Value="@(new Icons.Regular.Size24.TaskListSquare())" Color="Color.Accent" />
+                My Tasks
+            </FluentLabel>
+
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="LoadTasksAsync"
+                          Loading="@isLoading">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowClockwise())" Slot="start" />
+                Refresh
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (isLoading)
+    {
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 2rem;">
+                <FluentProgressRing />
+                <FluentLabel>Loading tasks...</FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <FluentMessageBar Intent="MessageIntent.Error" Style="margin-bottom: 1rem;">
+            <strong>Error:</strong> @errorMessage
+        </FluentMessageBar>
+    }
+    else if (tasks == null || !tasks.Any())
+    {
+        <FluentCard>
+            <FluentLabel Typo="Typography.Body">
+                No active tasks found. Great job staying on top of things! 🎉
+            </FluentLabel>
+        </FluentCard>
+    }
+    else
+    {
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                <FluentLabel Typo="Typography.H6">
+                    Showing @tasks.Count() active task(s)
+                </FluentLabel>
+
+                <FluentDataGrid Items="@tasks.AsQueryable()"
+                                GridTemplateColumns="3fr 1fr 1fr 1fr 2fr"
+                                Style="width: 100%;">
+
+                    <PropertyColumn Property="@(t => t.Title)" Title="Title" Sortable="true">
+                        <ColumnOptions>
+                            <FluentSearch @bind-Value="@titleFilter"
+                                         @oninput="@(() => FilterTasks())"
+                                         Placeholder="Filter by title..." />
+                        </ColumnOptions>
+                    </PropertyColumn>
+
+                    <TemplateColumn Title="Status" Sortable="true">
+                        <FluentBadge Appearance="@GetStatusAppearance(context.Status?.ToString())"
+                                     Fill="lightweight">
+                            @(context.Status?.ToString() ?? "Not set")
+                        </FluentBadge>
+                    </TemplateColumn>
+
+                    <TemplateColumn Title="Importance" Sortable="true">
+                        <FluentBadge Appearance="@GetImportanceAppearance(context.Importance?.ToString())"
+                                     Fill="lightweight">
+                            @(context.Importance?.ToString() ?? "Normal")
+                        </FluentBadge>
+                    </TemplateColumn>
+
+                    <TemplateColumn Title="Due Date" Sortable="true">
+                        @if (context.DueDateTime?.DateTime != null)
+                        {
+                            var dueDate = DateTime.Parse(context.DueDateTime.DateTime);
+                            var isOverdue = dueDate < DateTime.Now;
+                            <FluentLabel Style="@(isOverdue ? "color: var(--error);" : "")">
+                                @dueDate.ToString("MMM dd, yyyy")
+                                @if (isOverdue)
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.Warning())" Color="Color.Error" />
+                                }
+                            </FluentLabel>
+                        }
+                        else
+                        {
+                            <FluentLabel Typo="Typography.Caption">No due date</FluentLabel>
+                        }
+                    </TemplateColumn>
+
+                    <TemplateColumn Title="Created">
+                        @if (context.CreatedDateTime != null)
+                        {
+                            <FluentLabel Typo="Typography.Caption">
+                                @context.CreatedDateTime.Value.ToLocalTime().ToString("MMM dd, yyyy")
+                            </FluentLabel>
+                        }
+                    </TemplateColumn>
+
+                </FluentDataGrid>
+            </FluentStack>
+        </FluentCard>
+
+        @if (taskLists != null && taskLists.Any())
+        {
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="10">
+                    <FluentLabel Typo="Typography.H6">Task Lists</FluentLabel>
+                    <FluentDivider />
+                    <FluentStack Orientation="Orientation.Horizontal" Wrap="true" HorizontalGap="10">
+                        @foreach (var list in taskLists)
+                        {
+                            <FluentCard Style="min-width: 200px; padding: 1rem;">
+                                <FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+                                    <FluentLabel Typo="Typography.Subtitle">@list.DisplayName</FluentLabel>
+                                    @if (list.IsShared == true)
+                                    {
+                                        <FluentBadge Appearance="Appearance.Accent" Fill="lightweight">
+                                            <FluentIcon Value="@(new Icons.Regular.Size16.People())" />
+                                            Shared
+                                        </FluentBadge>
+                                    }
+                                </FluentStack>
+                            </FluentCard>
+                        }
+                    </FluentStack>
+                </FluentStack>
+            </FluentCard>
+        }
+    }
+</FluentStack>
+
+@code {
+    private IEnumerable<TodoTask>? allTasks;
+    private IEnumerable<TodoTask>? tasks;
+    private IEnumerable<TodoTaskList>? taskLists;
+    private bool isLoading;
+    private string? errorMessage;
+    private string titleFilter = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTasksAsync();
+    }
+
+    private async Task LoadTasksAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            // Load both tasks and task lists
+            var tasksTask = GraphService.GetTasksAsync();
+            var taskListsTask = GraphService.GetTaskListsAsync();
+
+            await Task.WhenAll(tasksTask, taskListsTask);
+
+            allTasks = await tasksTask;
+            tasks = allTasks;
+            taskLists = await taskListsTask;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load tasks: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FilterTasks()
+    {
+        if (allTasks == null) return;
+
+        if (string.IsNullOrWhiteSpace(titleFilter))
+        {
+            tasks = allTasks;
+        }
+        else
+        {
+            tasks = allTasks.Where(t =>
+                t.Title?.Contains(titleFilter, StringComparison.OrdinalIgnoreCase) == true);
+        }
+    }
+
+    private Appearance GetStatusAppearance(string? status)
+    {
+        return status?.ToLowerInvariant() switch
+        {
+            "completed" => Appearance.Success,
+            "inprogress" => Appearance.Accent,
+            "notstarted" => Appearance.Neutral,
+            _ => Appearance.Neutral
+        };
+    }
+
+    private Appearance GetImportanceAppearance(string? importance)
+    {
+        return importance?.ToLowerInvariant() switch
+        {
+            "high" => Appearance.Error,
+            "normal" => Appearance.Accent,
+            "low" => Appearance.Neutral,
+            _ => Appearance.Neutral
+        };
+    }
+}

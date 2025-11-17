@@ -1,0 +1,156 @@
+@page "/calendar"
+@attribute [Authorize]
+@inject IGraphService GraphService
+
+<PageTitle>Calendar - ClientHub FYI</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="20">
+    <FluentCard>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+            <FluentLabel Typo="Typography.H4">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Calendar())" Color="Color.Accent" />
+                My Calendar Events
+            </FluentLabel>
+
+            <FluentButton Appearance="Appearance.Accent"
+                          OnClick="LoadEventsAsync"
+                          Loading="@isLoading">
+                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowClockwise())" Slot="start" />
+                Refresh
+            </FluentButton>
+        </FluentStack>
+    </FluentCard>
+
+    @if (isLoading)
+    {
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center" Style="padding: 2rem;">
+                <FluentProgressRing />
+                <FluentLabel>Loading calendar events...</FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <FluentMessageBar Intent="MessageIntent.Error" Style="margin-bottom: 1rem;">
+            <strong>Error:</strong> @errorMessage
+        </FluentMessageBar>
+    }
+    else if (events == null || !events.Any())
+    {
+        <FluentCard>
+            <FluentLabel Typo="Typography.Body">
+                No upcoming events found for the next 7 days.
+            </FluentLabel>
+        </FluentCard>
+    }
+    else
+    {
+        <FluentCard>
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+                <FluentLabel Typo="Typography.H6">
+                    Showing @events.Count() event(s) for the next 7 days
+                </FluentLabel>
+
+                <FluentDataGrid Items="@events.AsQueryable()"
+                                GridTemplateColumns="2fr 1fr 1fr 2fr 100px"
+                                Style="width: 100%;">
+
+                    <PropertyColumn Property="@(e => e.Subject)" Title="Subject" Sortable="true">
+                        <ColumnOptions>
+                            <FluentSearch @bind-Value="@subjectFilter"
+                                         @oninput="@(() => FilterEvents())"
+                                         Placeholder="Filter by subject..." />
+                        </ColumnOptions>
+                    </PropertyColumn>
+
+                    <TemplateColumn Title="Start" Sortable="true">
+                        @if (context.Start?.DateTime != null)
+                        {
+                            <FluentStack Orientation="Orientation.Vertical">
+                                <FluentLabel>@DateTime.Parse(context.Start.DateTime).ToLocalTime().ToString("MMM dd, yyyy")</FluentLabel>
+                                <FluentLabel Typo="Typography.Caption">@DateTime.Parse(context.Start.DateTime).ToLocalTime().ToString("h:mm tt")</FluentLabel>
+                            </FluentStack>
+                        }
+                    </TemplateColumn>
+
+                    <TemplateColumn Title="End" Sortable="true">
+                        @if (context.End?.DateTime != null)
+                        {
+                            <FluentStack Orientation="Orientation.Vertical">
+                                <FluentLabel>@DateTime.Parse(context.End.DateTime).ToLocalTime().ToString("MMM dd, yyyy")</FluentLabel>
+                                <FluentLabel Typo="Typography.Caption">@DateTime.Parse(context.End.DateTime).ToLocalTime().ToString("h:mm tt")</FluentLabel>
+                            </FluentStack>
+                        }
+                    </TemplateColumn>
+
+                    <PropertyColumn Property="@(e => e.Location?.DisplayName ?? "No location")" Title="Location" Sortable="true" />
+
+                    <TemplateColumn Title="Actions">
+                        @if (!string.IsNullOrEmpty(context.WebLink))
+                        {
+                            <FluentAnchor Href="@context.WebLink" Target="_blank" Appearance="Appearance.Lightweight">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Open())" />
+                            </FluentAnchor>
+                        }
+                        @if (context.IsOnlineMeeting == true && !string.IsNullOrEmpty(context.OnlineMeetingUrl))
+                        {
+                            <FluentAnchor Href="@context.OnlineMeetingUrl" Target="_blank" Appearance="Appearance.Lightweight">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.Video())" />
+                            </FluentAnchor>
+                        }
+                    </TemplateColumn>
+
+                </FluentDataGrid>
+            </FluentStack>
+        </FluentCard>
+    }
+</FluentStack>
+
+@code {
+    private IEnumerable<Event>? allEvents;
+    private IEnumerable<Event>? events;
+    private bool isLoading;
+    private string? errorMessage;
+    private string subjectFilter = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadEventsAsync();
+    }
+
+    private async Task LoadEventsAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            allEvents = await GraphService.GetCalendarEventsAsync(7);
+            events = allEvents;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load calendar events: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FilterEvents()
+    {
+        if (allEvents == null) return;
+
+        if (string.IsNullOrWhiteSpace(subjectFilter))
+        {
+            events = allEvents;
+        }
+        else
+        {
+            events = allEvents.Where(e =>
+                e.Subject?.Contains(subjectFilter, StringComparison.OrdinalIgnoreCase) == true);
+        }
+    }
+}
