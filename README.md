@@ -15,6 +15,9 @@ A .NET 10 Blazor Web App that integrates with Microsoft Entra ID, FYI Docs Exter
 Before you begin, ensure you have the following:
 
 - **.NET 10 SDK** installed ([Download](https://dotnet.microsoft.com/download/dotnet/10.0))
+  - .NET 10 is the latest Long Term Support (LTS) release, released November 12, 2025
+  - Supported until November 10, 2028
+  - Includes C# 14 and major performance improvements
 - **Microsoft Entra ID** tenant with admin access to create app registrations
 - **FYI Docs** account with access to the External API
 - **(Optional)** MCP-compatible client like Claude Desktop for testing the MCP server
